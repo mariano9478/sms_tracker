@@ -108,6 +108,24 @@ class MainActivity : FlutterActivity() {
                             result.error("query_failed", e.message, null)
                         }
                     }
+                    "openSmsComposer" -> {
+                        val to = call.argument<String>("to")
+                        val body = call.argument<String>("body") ?: ""
+                        if (to.isNullOrBlank()) {
+                            result.error("bad_args", "Falta 'to'", null)
+                        } else {
+                            try {
+                                val intent = Intent(
+                                    Intent.ACTION_SENDTO,
+                                    Uri.parse("smsto:$to"),
+                                ).apply { putExtra("sms_body", body) }
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.error("open_failed", e.message, null)
+                            }
+                        }
+                    }
                     "openUrl" -> {
                         val url = call.argument<String>("url")
                         if (url.isNullOrBlank()) {

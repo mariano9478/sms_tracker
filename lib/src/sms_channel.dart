@@ -63,6 +63,15 @@ class SmsChannel {
     return _methods.invokeMethod('openUrl', {'url': url});
   }
 
+  /// Abre la app de Mensajes del sistema con el destinatario y el texto
+  /// ya escritos (el usuario solo tiene que tocar enviar).
+  static Future<void> openSmsComposer({
+    required String to,
+    String body = '',
+  }) {
+    return _methods.invokeMethod('openSmsComposer', {'to': to, 'body': body});
+  }
+
   static Future<String?> getPref(String key) {
     return _methods.invokeMethod<String>('getPref', {'key': key});
   }

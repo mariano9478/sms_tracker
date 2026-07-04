@@ -323,6 +323,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Abre la app de Mensajes del sistema con el número del rastreador y
+  /// [body] ya escrito — plan B para operar el dispositivo sin esta app.
+  Future<void> openSmsComposer([String body = '']) async {
+    final number = trackerNumber;
+    if (number == null || number.isEmpty) return;
+    try {
+      await SmsChannel.openSmsComposer(to: number, body: body);
+    } catch (_) {
+      // Sin app de mensajes; se ignora.
+    }
+  }
+
   /// Abre el discador con el número del rastreador (para llamarlo y
   /// escuchar qué pasa; el dispositivo atiende automáticamente si tiene
   /// respuesta automática configurada).

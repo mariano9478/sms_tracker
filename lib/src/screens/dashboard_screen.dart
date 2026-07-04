@@ -36,6 +36,8 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 8),
             _QuickActions(state: state),
             const SizedBox(height: 16),
+            _HowItWorksCard(state: state),
+            const SizedBox(height: 12),
             _InfoCard(theme: theme),
           ],
         ),
@@ -277,6 +279,108 @@ class _QuickActions extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Aclara que todo pasa por SMS y lista los comandos básicos, cada uno
+/// con acceso directo a la app de Mensajes con el texto ya escrito —
+/// plan B si algo no se ve reflejado en esta app.
+class _HowItWorksCard extends StatelessWidget {
+  const _HowItWorksCard({required this.state});
+
+  final AppState state;
+
+  static const _basicCommands = [
+    (command: 'loc', description: 'Pedir la ubicación actual'),
+    (command: 'Battery', description: 'Consultar la batería'),
+    (command: 'Status', description: 'Ver la configuración'),
+    (command: 'Findme', description: 'Hacerlo sonar para encontrarlo'),
+    (command: 'A?', description: 'Ver los contactos de emergencia'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.sms_outlined, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('¿Cómo funciona?', style: theme.textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Esta app se comunica con el rastreador por SMS comunes: '
+              'envía los comandos y lee las respuestas para mostrarte todo '
+              'acá. Ante cualquier duda —o si algo no aparece— podés '
+              'revisar la conversación directamente en la app de Mensajes '
+              'del teléfono.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Comandos básicos (ubicación y urgencias):',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 4),
+            for (final item in _basicCommands)
+              InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () => state.openSmsComposer(item.command),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          item.command,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.description,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                      Icon(
+                        Icons.open_in_new,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => state.openSmsComposer(),
+                icon: const Icon(Icons.forum_outlined, size: 18),
+                label: const Text('Abrir la app de Mensajes'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
