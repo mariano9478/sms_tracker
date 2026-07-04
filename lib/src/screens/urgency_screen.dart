@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_state.dart';
-import '../models.dart';
 
 /// Plantillas de los avisos manuales de urgencia que un familiar envía a
 /// los contactos de emergencia desde su teléfono.
@@ -22,16 +22,80 @@ class UrgencyMessages {
 
 /// Pantalla partida al medio que se abre manteniendo apretado el botón
 /// rojo de Inicio: arriba (amarillo) el aviso moderado, abajo (rojo) la
-/// emergencia. Tocar una mitad abre la confirmación y el envío a los
-/// contactos de emergencia por SMS o WhatsApp.
-class UrgencyScreen extends StatelessWidget {
+/// emergencia. MANTENIENDO APRETADA una mitad se envía el SMS
+/// automáticamente a todos los contactos de emergencia (el toque corto
+/// solo muestra la ayuda, para evitar envíos accidentales).
+class UrgencyScreen extends StatefulWidget {
   const UrgencyScreen({super.key, required this.state});
 
   final AppState state;
 
   @override
+  State<UrgencyScreen> createState() => _UrgencyScreenState();
+}
+
+class _UrgencyScreenState extends State<UrgencyScreen> {
+  bool _sending = false;
+
+  Future<void> _dispatch(String message) async {
+    if (_sending) return;
+    final state = widget.state;
+    final numbers = state.contacts.map((c) => c.number).toList();
+    if (numbers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'No hay contactos de emergencia guardados. Sincronizalos desde '
+            'Comandos → Contactos SOS (botón A?).',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.heavyImpact();
+    setState(() => _sending = true);
+    final sent = await state.sendUrgencyMessage(
+      numbers: numbers,
+      message: message,
+    );
+    if (!mounted) return;
+    setState(() => _sending = false);
+
+    // Referencias antes de cerrar la pantalla.
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final errorColor = Theme.of(context).colorScheme.error;
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        content: Text(
+          sent > 0
+              ? 'Aviso enviado por SMS a $sent contacto${sent == 1 ? '' : 's'} '
+                  'de emergencia.'
+              : 'No se pudo enviar el aviso. Revisá los permisos de SMS.',
+        ),
+        backgroundColor: sent > 0 ? null : errorColor,
+      ),
+    );
+  }
+
+  void _showHoldHint() {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Mantené APRETADA la mitad para enviar el aviso.'),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final name = state.trackerName;
+    final name = widget.state.trackerName;
+    final contactCount = widget.state.contacts.length;
     return Scaffold(
       body: Stack(
         children: [
@@ -44,15 +108,12 @@ class UrgencyScreen extends StatelessWidget {
                   icon: Icons.warning_amber_rounded,
                   title: 'ALGO ESTÁ PASANDO',
                   quote: '"Llamá a $name, algo está pasando."',
-                  subtitle:
-                      'Aviso moderado, no extremo. Tocá para enviarlo a '
-                      'los contactos de emergencia.',
-                  onTap: () => _openSendSheet(
-                    context,
-                    title: 'Aviso: algo está pasando',
-                    color: const Color(0xFFF9A825),
-                    message: UrgencyMessages.moderate(name),
-                  ),
+                  subtitle: 'Aviso moderado, no extremo.\nMANTENÉ APRETADO '
+                      'para enviarlo por SMS a $contactCount contacto'
+                      '${contactCount == 1 ? '' : 's'}.',
+                  onLongPress: () =>
+                      _dispatch(UrgencyMessages.moderate(name)),
+                  onTap: _showHoldHint,
                 ),
               ),
               Expanded(
@@ -62,15 +123,11 @@ class UrgencyScreen extends StatelessWidget {
                   icon: Icons.sos,
                   title: 'URGENTE',
                   quote: '"Hay una emergencia con $name."',
-                  subtitle:
-                      'Emergencia. Tocá para enviarlo a los contactos de '
-                      'emergencia.',
-                  onTap: () => _openSendSheet(
-                    context,
-                    title: 'URGENTE: hay una emergencia',
-                    color: const Color(0xFFC62828),
-                    message: UrgencyMessages.urgent(name),
-                  ),
+                  subtitle: 'Emergencia.\nMANTENÉ APRETADO para enviarlo '
+                      'por SMS a $contactCount contacto'
+                      '${contactCount == 1 ? '' : 's'}.',
+                  onLongPress: () => _dispatch(UrgencyMessages.urgent(name)),
+                  onTap: _showHoldHint,
                 ),
               ),
             ],
@@ -90,31 +147,25 @@ class UrgencyScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (_sending)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black54,
+                alignment: Alignment.center,
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'Enviando SMS a los contactos…',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
-      ),
-    );
-  }
-
-  void _openSendSheet(
-    BuildContext context, {
-    required String title,
-    required Color color,
-    required String message,
-  }) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-        ),
-        child: _SendUrgencySheet(
-          state: state,
-          title: title,
-          color: color,
-          initialMessage: message,
-        ),
       ),
     );
   }
@@ -128,6 +179,7 @@ class _UrgencyHalf extends StatelessWidget {
     required this.title,
     required this.quote,
     required this.subtitle,
+    required this.onLongPress,
     required this.onTap,
   });
 
@@ -137,6 +189,7 @@ class _UrgencyHalf extends StatelessWidget {
   final String title;
   final String quote;
   final String subtitle;
+  final VoidCallback onLongPress;
   final VoidCallback onTap;
 
   @override
@@ -144,6 +197,7 @@ class _UrgencyHalf extends StatelessWidget {
     return Material(
       color: color,
       child: InkWell(
+        onLongPress: onLongPress,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -181,172 +235,6 @@ class _UrgencyHalf extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Confirmación y envío: mensaje editable, contactos con casillas,
-/// envío masivo por SMS y acceso directo a WhatsApp por contacto.
-class _SendUrgencySheet extends StatefulWidget {
-  const _SendUrgencySheet({
-    required this.state,
-    required this.title,
-    required this.color,
-    required this.initialMessage,
-  });
-
-  final AppState state;
-  final String title;
-  final Color color;
-  final String initialMessage;
-
-  @override
-  State<_SendUrgencySheet> createState() => _SendUrgencySheetState();
-}
-
-class _SendUrgencySheetState extends State<_SendUrgencySheet> {
-  late final TextEditingController _messageController =
-      TextEditingController(text: widget.initialMessage);
-  late final Map<int, bool> _selected = {
-    for (final c in widget.state.contacts) c.slot: true,
-  };
-  bool _sending = false;
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    super.dispose();
-  }
-
-  List<SosContact> get _selectedContacts => widget.state.contacts
-      .where((c) => _selected[c.slot] ?? false)
-      .toList();
-
-  Future<void> _sendSms() async {
-    final targets = _selectedContacts;
-    if (targets.isEmpty) return;
-    setState(() => _sending = true);
-    final sent = await widget.state.sendUrgencyMessage(
-      numbers: targets.map((c) => c.number).toList(),
-      message: _messageController.text.trim(),
-    );
-    if (!mounted) return;
-    setState(() => _sending = false);
-    // Referencias antes de cerrar las rutas: el context del sheet deja
-    // de estar montado después de los pops.
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    final errorColor = Theme.of(context).colorScheme.error;
-    navigator.pop(); // cierra el sheet
-    navigator.pop(); // cierra la pantalla de urgencia
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          sent > 0
-              ? 'Aviso enviado por SMS a $sent contacto${sent == 1 ? '' : 's'}.'
-              : 'No se pudo enviar el aviso. Revisá los permisos de SMS.',
-        ),
-        backgroundColor: sent > 0 ? null : errorColor,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final contacts = widget.state.contacts;
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.campaign, color: widget.color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(widget.title, style: theme.textTheme.titleLarge),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _messageController,
-              maxLines: 4,
-              minLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Mensaje (podés editarlo)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (contacts.isEmpty) ...[
-              Text(
-                'No hay contactos de emergencia guardados en la app. '
-                'Sincronizalos desde Comandos → Contactos SOS (botón A?) '
-                'y volvé a intentar.',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.error),
-              ),
-            ] else ...[
-              Text('Enviar a:', style: theme.textTheme.titleSmall),
-              for (final contact in contacts)
-                Row(
-                  children: [
-                    Expanded(
-                      child: CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        value: _selected[contact.slot] ?? false,
-                        title: Text(contact.number),
-                        subtitle: Text('Contacto ${contact.slot}'),
-                        onChanged: (v) => setState(
-                            () => _selected[contact.slot] = v ?? false),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Enviar por WhatsApp a este contacto',
-                      icon: const Icon(Icons.chat),
-                      color: const Color(0xFF25D366),
-                      onPressed: () => widget.state.openWhatsApp(
-                        number: contact.number,
-                        message: _messageController.text.trim(),
-                      ),
-                    ),
-                  ],
-                ),
-              Text(
-                'WhatsApp abre el chat con el mensaje escrito (requiere que '
-                'el número tenga código de país). El SMS se envía solo.',
-                style: theme.textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: widget.color,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(52),
-                ),
-                onPressed:
-                    _sending || _selectedContacts.isEmpty ? null : _sendSms,
-                icon: _sending
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send),
-                label: Text(
-                  'ENVIAR SMS A ${_selectedContacts.length} '
-                  'CONTACTO${_selectedContacts.length == 1 ? '' : 'S'}',
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );

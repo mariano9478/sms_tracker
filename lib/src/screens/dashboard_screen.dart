@@ -25,6 +25,12 @@ class DashboardScreen extends StatelessWidget {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        tooltip: 'Llamar al rastreador por teléfono',
+        onPressed: () => state.callTracker(),
+        icon: const Icon(Icons.call),
+        label: const Text('Llamar'),
+      ),
       body: RefreshIndicator(
         onRefresh: state.refreshInbox,
         child: ListView(

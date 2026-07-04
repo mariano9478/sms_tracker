@@ -335,23 +335,6 @@ class AppState extends ChangeNotifier {
     return sent;
   }
 
-  /// Abre WhatsApp con el chat de [number] y [message] ya escrito.
-  /// Requiere que el número incluya código de país para que WhatsApp lo
-  /// resuelva (ej: 54911...).
-  Future<void> openWhatsApp({
-    required String number,
-    required String message,
-  }) async {
-    final digits = number.replaceAll(RegExp(r'\D'), '');
-    if (digits.isEmpty) return;
-    final url = 'https://wa.me/$digits?text=${Uri.encodeComponent(message)}';
-    try {
-      await SmsChannel.openUrl(url);
-    } catch (_) {
-      // WhatsApp no disponible; se ignora.
-    }
-  }
-
   /// Completa las coordenadas desde la caché si el link ya fue resuelto.
   TrackerLocation? _withResolvedCoords(TrackerLocation? location) {
     if (location == null || location.hasCoordinates) return location;
