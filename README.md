@@ -35,6 +35,11 @@ separado de tus SMS personales.
 | | |
 |---|---|
 | 🏠 **Dashboard** | Última batería y ubicación conocidas, apertura en Google Maps y acciones rápidas de un toque: Ubicación, Batería, Estado y Hacer sonar. |
+| 🗺️ **Mapa integrado** | Última ubicación conocida sobre un mapa (OpenStreetMap) con pin y zoom. Si el rastreador manda la posición como link (smart-locator), la app sigue su redirección a Google Maps, extrae las coordenadas y la muestra igual en el mapa. |
+| 🔔 **Notificaciones** | Aviso instantáneo cuando el rastreador responde — incluso con la app cerrada. Al tocarlo, la app se abre directo en el mapa o en los mensajes. |
+| 🆘 **Alerta SOS** | Cuando se activa el botón de emergencia ("Help Me"): notificación de ALARMA con sonido que se repite hasta atenderla, vibración, pantalla completa sobre el bloqueo, y dentro de la app una alerta roja pulsante con acciones directas (ver en el mapa / llamar al rastreador). |
+| 🚨 **Botón "hay una urgencia"** | Manteniéndolo apretado se abre una pantalla partida: aviso moderado (amarillo, "llamá a X, algo está pasando") o emergencia (rojo, "URGENTE"). Manteniendo apretada una mitad, el SMS se envía automáticamente a todos los contactos de emergencia (doble long-press contra envíos accidentales). Los contactos se sincronizan del dispositivo (`A?`) y se renuevan solos si tienen más de un mes. |
+| 📞 **Botón de llamada** | Botón flotante en Inicio que abre el discador con el número del rastreador (el dispositivo atiende solo tras dos rings). |
 | 🆘 **Contactos SOS** | Administra las 10 posiciones de números de emergencia (aviso por SMS y/o llamada), consulta la lista al dispositivo y sincroniza su respuesta. |
 | 🔘 **Botón lateral** | Elegí a qué contacto llama el botón de llamada rápida, o desactivalo. |
 | 🚨 **Sensores y alarmas** | Sensor de caída (sensibilidad 1–9), cerco virtual en metros y alerta de no movimiento. |
@@ -55,19 +60,32 @@ La app cubre el catálogo completo de la guía oficial:
 | Agregar contacto SOS | `A(n),(sms),(llamada),(número)` | Contactos SOS |
 | Ver contactos | `A?` | Contactos SOS |
 | Eliminar contacto | `removeA(n)` | Contactos SOS |
-| Botón lateral | `X(n)` / `XO` | Botón lateral |
-| Sensor de caída | `FL1,(1-9),(0/1)` / `FLO` | Sensores |
-| Cerco virtual | `GE0(n),1,0,(m)M` | Sensores |
-| Alerta de no movimiento | `NMO1,(min)M,(0/1)` / `NMOO` | Sensores |
+| Secuencia de llamadas SOS | `SCS0` / `SCS1` | Comandos |
+| Botón lateral | `X(n)` / `X0` | Botón lateral |
+| Llamadas entrantes (lista blanca) | `callin1` / `callin0` | Comandos |
+| Sensor de caída | `FL1,(1-9),(0/1)` / `FL0` | Sensores |
+| Cercos virtuales (2) | `GEO(1-2),1,0,(m)M` | Sensores |
+| Alerta de no movimiento | `NMO1,(t)(S/M/H),(0/1)` / `NMO0` | Sensores |
 | Ubicación actual | `loc` | Inicio |
 | Estado de batería | `Battery` | Inicio |
 | Configuración actual | `Status` | Inicio |
 | Hacer sonar ("acá estoy") | `Findme` | Inicio |
-| Escucha remota | `LT1` / `LTO` | Audio |
-| Volumen del timbre | `$rt(0-100)$` | Audio |
+| Escucha remota | `LT1` / `LT0` | Audio |
+| Volumen del timbre | `rt(0-100)` | Audio |
 | Volumen del micrófono | `micvolume(0-15)` | Audio |
+| Volumen del parlante | `speakervolume(0-100)` | Audio |
+| Parlante en llamadas SOS | `sosspeaker1` / `sosspeaker0` | Audio |
+| Voces del dispositivo | `beep1` / `beep0` | Audio |
+| Nombre del dispositivo | `Prefix1,(nombre)` | Sistema |
 | Zona horaria | `TZ(offset)` | Sistema |
 | Alerta de batería baja | `Low1,(porcentaje)` | Sistema |
+
+> **Nota sobre fecha y hora**: el dispositivo no tiene comando para fijar
+> fecha/hora manualmente — su reloj se sincroniza solo desde la red
+> celular/GPS. Lo único configurable es la zona horaria (`TZ-03`). Si el
+> reloj reporta una fecha absurda (ej: `01/01/2034`), la app lo detecta,
+> oculta esa hora y muestra un aviso con la sugerencia de verificar señal
+> y zona horaria.
 
 ## 🚀 Empezar
 
@@ -118,10 +136,13 @@ lib/
     └── screens/                   # Inicio, Comandos, Mensajes, Ajustes…
         └── sheets/                # Formularios de cada comando
 
-android/app/src/main/kotlin/.../MainActivity.kt
-├── MethodChannel sms_tracker/methods    # sendSms, queryInbox, permisos,
-│                                        # getPref/setPref, openUrl
-└── EventChannel  sms_tracker/incoming   # SMS entrantes en vivo
+android/app/src/main/kotlin/.../
+├── MainActivity.kt
+│   ├── MethodChannel sms_tracker/methods    # sendSms, queryInbox, permisos,
+│   │                                        # getPref/setPref, openUrl
+│   └── EventChannel  sms_tracker/incoming   # SMS entrantes en vivo
+└── SmsReceiver.kt                           # notificaciones con la app
+                                             # cerrada (receiver del manifest)
 ```
 
 Detalles de diseño:
@@ -146,11 +167,15 @@ contactos de respuestas reales.
 
 ## 🔐 Permisos y privacidad
 
-La app pide `SEND_SMS`, `RECEIVE_SMS` y `READ_SMS`, imprescindibles para
-enviar comandos y leer las respuestas del rastreador.
+La app pide `SEND_SMS`, `RECEIVE_SMS` y `READ_SMS` (imprescindibles para
+operar el rastreador), `POST_NOTIFICATIONS` (avisos de respuestas en
+Android 13+) e `INTERNET` (solo para descargar los tiles del mapa de
+OpenStreetMap).
 
-- **Ningún dato sale de tu teléfono**: no hay servidores, analytics ni
-  conexión a internet (salvo abrir el link del mapa en tu app de mapas).
+- **Tus datos no salen del teléfono**: no hay servidores propios ni
+  analytics. La única red que usa la app es la descarga de imágenes de mapa
+  de OpenStreetMap y la resolución del link de ubicación que envía el
+  propio rastreador (redirige a Google Maps).
 - Cada comando es un SMS común: tu plan puede cobrarlo.
 - La escucha remota debe usarse de forma responsable y con consentimiento de
   quien porta el dispositivo.
@@ -166,11 +191,13 @@ enviar comandos y leer las respuestas del rastreador.
 
 ## 🗺️ Roadmap
 
+- [x] Notificaciones al recibir respuestas del rastreador (incluso con la
+      app cerrada)
+- [x] Mapa integrado con la última ubicación conocida
 - [ ] Rol de "app de SMS predeterminada" para ocultar los mensajes del
       rastreador de la bandeja del sistema
-- [ ] Notificaciones locales al recibir alertas SOS
 - [ ] Soporte multi-dispositivo (varios rastreadores)
-- [ ] Historial de ubicaciones con mapa integrado
+- [ ] Historial de recorridos sobre el mapa
 
 ## 🤝 Contribuir
 

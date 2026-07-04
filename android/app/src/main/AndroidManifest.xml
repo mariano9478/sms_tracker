@@ -3,6 +3,13 @@
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
+    <!-- Mapa de última ubicación (tiles de OpenStreetMap) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Aviso cuando el rastreador responde (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Alerta SOS: vibración y pantalla completa sobre el bloqueo -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:label="Rastreador SOS"
@@ -25,6 +32,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Notifica respuestas del rastreador aunque la app esté cerrada -->
+        <receiver
+            android:name=".SmsReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
 
         <meta-data
             android:name="flutterEmbedding"

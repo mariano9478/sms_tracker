@@ -9,6 +9,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Telephony
 import android.telephony.SmsManager
 import androidx.core.app.ActivityCompat
@@ -31,6 +32,11 @@ class MainActivity : FlutterActivity() {
         private const val METHOD_CHANNEL = "sms_tracker/methods"
         private const val EVENT_CHANNEL = "sms_tracker/incoming"
         private const val PERMISSION_REQUEST_CODE = 4711
+
+        /** Usado por [SmsReceiver] para no notificar con la app visible. */
+        @JvmStatic
+        @Volatile
+        var isInForeground = false
     }
 
     private val smsPermissions = arrayOf(
@@ -41,14 +47,48 @@ class MainActivity : FlutterActivity() {
 
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var smsReceiver: BroadcastReceiver? = null
+    private var methodChannel: MethodChannel? = null
+
+    /** Vista pedida por una notificación tocada antes de que Dart arranque. */
+    private var pendingLaunchView: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        pendingLaunchView = intent?.getStringExtra(SmsReceiver.EXTRA_OPEN_VIEW)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val view = intent.getStringExtra(SmsReceiver.EXTRA_OPEN_VIEW) ?: return
+        pendingLaunchView = view
+        // App ya corriendo: se avisa a Dart directamente.
+        methodChannel?.invokeMethod("launchView", view)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isInForeground = true
+    }
+
+    override fun onPause() {
+        isInForeground = false
+        super.onPause()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
-            .setMethodCallHandler { call, result ->
+        val channel =
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
+        methodChannel = channel
+        channel.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "hasPermissions" -> result.success(hasSmsPermissions())
+                    "consumeLaunchView" -> {
+                        result.success(pendingLaunchView)
+                        pendingLaunchView = null
+                    }
                     "requestPermissions" -> requestSmsPermissions(result)
                     "sendSms" -> {
                         val to = call.argument<String>("to")
@@ -66,6 +106,24 @@ class MainActivity : FlutterActivity() {
                             result.success(queryInbox(suffix, limit))
                         } catch (e: Exception) {
                             result.error("query_failed", e.message, null)
+                        }
+                    }
+                    "openSmsComposer" -> {
+                        val to = call.argument<String>("to")
+                        val body = call.argument<String>("body") ?: ""
+                        if (to.isNullOrBlank()) {
+                            result.error("bad_args", "Falta 'to'", null)
+                        } else {
+                            try {
+                                val intent = Intent(
+                                    Intent.ACTION_SENDTO,
+                                    Uri.parse("smsto:$to"),
+                                ).apply { putExtra("sms_body", body) }
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.error("open_failed", e.message, null)
+                            }
                         }
                     }
                     "openUrl" -> {
@@ -131,7 +189,15 @@ class MainActivity : FlutterActivity() {
             return
         }
         pendingPermissionResult = result
-        ActivityCompat.requestPermissions(this, smsPermissions, PERMISSION_REQUEST_CODE)
+        // En Android 13+ se pide también el permiso de notificaciones para
+        // poder avisar cuando el rastreador responde. No es bloqueante:
+        // hasSmsPermissions() solo exige los permisos de SMS.
+        val toRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            smsPermissions + Manifest.permission.POST_NOTIFICATIONS
+        } else {
+            smsPermissions
+        }
+        ActivityCompat.requestPermissions(this, toRequest, PERMISSION_REQUEST_CODE)
     }
 
     override fun onRequestPermissionsResult(

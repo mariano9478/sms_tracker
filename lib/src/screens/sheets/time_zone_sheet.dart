@@ -23,8 +23,11 @@ class _TimeZoneSheetState extends State<TimeZoneSheet> {
     return CommandSheetScaffold(
       title: 'Zona horaria',
       description:
-          'Define la zona horaria del rastreador para que los reportes '
-          'tengan la hora correcta. Argentina: -03.',
+          'El reloj del rastreador se sincroniza solo desde la red '
+          'celular/GPS: no hay comando para fijar fecha y hora a mano. '
+          'Si la hora de los reportes ("Loc Time") sale mal, corregí la '
+          'zona horaria con este comando (Argentina y Uruguay: -03) y '
+          'asegurate de que el dispositivo tenga señal.',
       commandPreview: command,
       children: [
         DropdownButtonFormField<int>(
