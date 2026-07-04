@@ -35,6 +35,8 @@ separado de tus SMS personales.
 | | |
 |---|---|
 | 🏠 **Dashboard** | Última batería y ubicación conocidas, apertura en Google Maps y acciones rápidas de un toque: Ubicación, Batería, Estado y Hacer sonar. |
+| 🗺️ **Mapa integrado** | Última ubicación conocida sobre un mapa (OpenStreetMap) con pin y zoom; si el rastreador manda la posición como link (smart-locator), acceso directo para abrirlo. |
+| 🔔 **Notificaciones** | Aviso instantáneo cuando el rastreador responde — incluso con la app cerrada. Al tocarlo, la app se abre directo en el mapa o en los mensajes. |
 | 🆘 **Contactos SOS** | Administra las 10 posiciones de números de emergencia (aviso por SMS y/o llamada), consulta la lista al dispositivo y sincroniza su respuesta. |
 | 🔘 **Botón lateral** | Elegí a qué contacto llama el botón de llamada rápida, o desactivalo. |
 | 🚨 **Sensores y alarmas** | Sensor de caída (sensibilidad 1–9), cerco virtual en metros y alerta de no movimiento. |
@@ -118,10 +120,13 @@ lib/
     └── screens/                   # Inicio, Comandos, Mensajes, Ajustes…
         └── sheets/                # Formularios de cada comando
 
-android/app/src/main/kotlin/.../MainActivity.kt
-├── MethodChannel sms_tracker/methods    # sendSms, queryInbox, permisos,
-│                                        # getPref/setPref, openUrl
-└── EventChannel  sms_tracker/incoming   # SMS entrantes en vivo
+android/app/src/main/kotlin/.../
+├── MainActivity.kt
+│   ├── MethodChannel sms_tracker/methods    # sendSms, queryInbox, permisos,
+│   │                                        # getPref/setPref, openUrl
+│   └── EventChannel  sms_tracker/incoming   # SMS entrantes en vivo
+└── SmsReceiver.kt                           # notificaciones con la app
+                                             # cerrada (receiver del manifest)
 ```
 
 Detalles de diseño:
@@ -146,11 +151,14 @@ contactos de respuestas reales.
 
 ## 🔐 Permisos y privacidad
 
-La app pide `SEND_SMS`, `RECEIVE_SMS` y `READ_SMS`, imprescindibles para
-enviar comandos y leer las respuestas del rastreador.
+La app pide `SEND_SMS`, `RECEIVE_SMS` y `READ_SMS` (imprescindibles para
+operar el rastreador), `POST_NOTIFICATIONS` (avisos de respuestas en
+Android 13+) e `INTERNET` (solo para descargar los tiles del mapa de
+OpenStreetMap).
 
-- **Ningún dato sale de tu teléfono**: no hay servidores, analytics ni
-  conexión a internet (salvo abrir el link del mapa en tu app de mapas).
+- **Tus datos no salen del teléfono**: no hay servidores propios ni
+  analytics. La única red que usa la app es la descarga de imágenes de mapa
+  de OpenStreetMap y la apertura del link de ubicación en tu navegador.
 - Cada comando es un SMS común: tu plan puede cobrarlo.
 - La escucha remota debe usarse de forma responsable y con consentimiento de
   quien porta el dispositivo.
@@ -166,11 +174,13 @@ enviar comandos y leer las respuestas del rastreador.
 
 ## 🗺️ Roadmap
 
+- [x] Notificaciones al recibir respuestas del rastreador (incluso con la
+      app cerrada)
+- [x] Mapa integrado con la última ubicación conocida
 - [ ] Rol de "app de SMS predeterminada" para ocultar los mensajes del
       rastreador de la bandeja del sistema
-- [ ] Notificaciones locales al recibir alertas SOS
 - [ ] Soporte multi-dispositivo (varios rastreadores)
-- [ ] Historial de ubicaciones con mapa integrado
+- [ ] Historial de recorridos sobre el mapa
 
 ## 🤝 Contribuir
 

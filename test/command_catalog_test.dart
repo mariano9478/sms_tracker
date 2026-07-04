@@ -75,6 +75,31 @@ void main() {
       expect(loc.mapUrl, contains('maps.google.com'));
     });
 
+    test('respuesta real de loc: link sin esquema, Loc Time y batería', () {
+      const sample = 'GSM and WIFI-Loc:\n'
+          'Loc Time:01/01/2034 00:00:00\n'
+          'Battery:83%\n'
+          'smart-locator.com/web/geolocation/wg/JCLAmB4Zs1-Cv5oeGbNghrzgN78'
+          'BtKW3klhRbmQct5BYUW5kGCch0gIiGvwTVbYU9RPQGA31E-qpDfUTzxgK9RO0pgX'
+          '8E2u1CPwTa7U=';
+      final now = DateTime(2026, 7, 4, 12, 30);
+
+      final loc = ResponseParser.parseLocation(sample, now);
+      expect(loc, isNotNull);
+      expect(loc!.hasCoordinates, isFalse);
+      expect(loc.mapUrl, startsWith('smart-locator.com/web/geolocation/'));
+      // El link sin esquema se normaliza a https y conserva el token
+      // completo (incluido el '=' final).
+      expect(loc.openUrl,
+          startsWith('https://smart-locator.com/web/geolocation/'));
+      expect(loc.openUrl, endsWith('='));
+      expect(loc.reportedAt, now);
+      expect(loc.deviceTime, DateTime(2034, 1, 1, 0, 0, 0));
+
+      // La misma respuesta trae la batería.
+      expect(ResponseParser.parseBattery(sample), 83);
+    });
+
     test('sin ubicación', () {
       expect(
         ResponseParser.parseLocation('Battery: 85%', DateTime(2026)),

@@ -32,6 +32,10 @@ class AppState extends ChangeNotifier {
   DateTime? batteryReportedAt;
   TrackerLocation? lastLocation;
 
+  /// Vista que la UI debe mostrar (por ej. al tocar una notificación):
+  /// 'map', 'messages'… La consume [HomeShell] y la vuelve a null.
+  final ValueNotifier<String?> viewRequest = ValueNotifier<String?>(null);
+
   StreamSubscription<Map<String, dynamic>>? _incomingSub;
   List<SmsRecord> _sentLog = [];
 
@@ -48,6 +52,11 @@ class AppState extends ChangeNotifier {
       await refreshInbox();
       _listenIncoming();
     }
+    // Navegación desde notificaciones: app ya corriendo (handler) o
+    // recién abierta desde la notificación (consumeLaunchView).
+    SmsChannel.setLaunchViewHandler((view) => viewRequest.value = view);
+    final launchView = await SmsChannel.consumeLaunchView();
+    if (launchView != null) viewRequest.value = launchView;
     initialized = true;
     notifyListeners();
   }
@@ -254,6 +263,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _incomingSub?.cancel();
+    viewRequest.dispose();
     super.dispose();
   }
 }

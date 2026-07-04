@@ -16,6 +16,24 @@ class SmsChannel {
     return await _methods.invokeMethod<bool>('hasPermissions') ?? false;
   }
 
+  /// Vista pedida por la notificación que abrió la app (arranque en frío),
+  /// o `null`. Se consume: la segunda llamada devuelve `null`.
+  static Future<String?> consumeLaunchView() {
+    return _methods.invokeMethod<String>('consumeLaunchView');
+  }
+
+  /// Registra el callback para cuando el usuario toca una notificación con
+  /// la app ya corriendo (el nativo invoca `launchView`).
+  static void setLaunchViewHandler(void Function(String view) handler) {
+    _methods.setMethodCallHandler((call) async {
+      if (call.method == 'launchView') {
+        final view = call.arguments as String?;
+        if (view != null) handler(view);
+      }
+      return null;
+    });
+  }
+
   static Future<bool> requestPermissions() async {
     return await _methods.invokeMethod<bool>('requestPermissions') ?? false;
   }

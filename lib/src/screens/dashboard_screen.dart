@@ -193,9 +193,9 @@ class _StatusCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: () => state.openMap(),
+                  onPressed: () => state.viewRequest.value = 'map',
                   icon: const Icon(Icons.map_outlined),
-                  label: const Text('Abrir en el mapa'),
+                  label: const Text('Ver en el mapa'),
                 ),
               ),
             ],
