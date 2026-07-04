@@ -1,0 +1,19 @@
+name: sms_tracker
+description: App para configurar y administrar rastreadores SOS EV07BG (2G) / BX (4G) por SMS, sin memorizar comandos.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
