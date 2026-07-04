@@ -37,6 +37,7 @@ separado de tus SMS personales.
 | 🏠 **Dashboard** | Última batería y ubicación conocidas, apertura en Google Maps y acciones rápidas de un toque: Ubicación, Batería, Estado y Hacer sonar. |
 | 🗺️ **Mapa integrado** | Última ubicación conocida sobre un mapa (OpenStreetMap) con pin y zoom. Si el rastreador manda la posición como link (smart-locator), la app sigue su redirección a Google Maps, extrae las coordenadas y la muestra igual en el mapa. |
 | 🔔 **Notificaciones** | Aviso instantáneo cuando el rastreador responde — incluso con la app cerrada. Al tocarlo, la app se abre directo en el mapa o en los mensajes. |
+| 🆘 **Alerta SOS** | Cuando se activa el botón de emergencia ("Help Me"): notificación de ALARMA con sonido que se repite hasta atenderla, vibración, pantalla completa sobre el bloqueo, y dentro de la app una alerta roja pulsante con acciones directas (ver en el mapa / llamar al rastreador). |
 | 🆘 **Contactos SOS** | Administra las 10 posiciones de números de emergencia (aviso por SMS y/o llamada), consulta la lista al dispositivo y sincroniza su respuesta. |
 | 🔘 **Botón lateral** | Elegí a qué contacto llama el botón de llamada rápida, o desactivalo. |
 | 🚨 **Sensores y alarmas** | Sensor de caída (sensibilidad 1–9), cerco virtual en metros y alerta de no movimiento. |

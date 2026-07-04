@@ -16,6 +16,7 @@ class AppState extends ChangeNotifier {
   static const _kSentLog = 'sent_log';
   static const _kContacts = 'contacts';
   static const _kResolvedCoords = 'resolved_locations';
+  static const _kSosDismissed = 'sos_dismissed_key';
   static const _maxSentLog = 300;
   static const _maxResolvedCache = 50;
 
@@ -39,6 +40,16 @@ class AppState extends ChangeNotifier {
   /// ubicación (siguiendo su redirección a Google Maps).
   bool resolvingLocation = false;
 
+  /// Mensaje de emergencia (botón SOS) activo, aún no descartado por el
+  /// usuario. Mientras no sea null la UI muestra la alerta a pantalla
+  /// completa.
+  SmsRecord? activeSosRecord;
+
+  /// Hora de activación reportada en el mensaje de SOS ("Alarm Time").
+  DateTime? sosAlarmTime;
+
+  String? _dismissedSosKey;
+
   /// Vista que la UI debe mostrar (por ej. al tocar una notificación):
   /// 'map', 'messages'… La consume [HomeShell] y la vuelve a null.
   final ValueNotifier<String?> viewRequest = ValueNotifier<String?>(null);
@@ -60,6 +71,7 @@ class AppState extends ChangeNotifier {
     contacts = _decodeContacts(await SmsChannel.getPref(_kContacts));
     _resolvedCoords =
         _decodeResolved(await SmsChannel.getPref(_kResolvedCoords));
+    _dismissedSosKey = await SmsChannel.getPref(_kSosDismissed);
     permissionsGranted = await SmsChannel.hasPermissions();
     if (permissionsGranted && isConfigured) {
       await refreshInbox();
@@ -210,6 +222,7 @@ class AppState extends ChangeNotifier {
     int? battery;
     DateTime? batteryAt;
     TrackerLocation? location;
+    SmsRecord? latestSos;
     final deviceContacts = <int, SosContact>{};
 
     for (final r in records) {
@@ -221,9 +234,20 @@ class AppState extends ChangeNotifier {
       }
       final loc = ResponseParser.parseLocation(r.body, r.date);
       if (loc != null) location = loc;
+      if (ResponseParser.isSosAlert(r.body)) latestSos = r;
       for (final c in ResponseParser.parseContacts(r.body)) {
         deviceContacts[c.slot] = c;
       }
+    }
+
+    // Alerta SOS: se muestra la más reciente mientras no haya sido
+    // descartada explícitamente por el usuario.
+    if (latestSos != null && latestSos.dedupeKey != _dismissedSosKey) {
+      activeSosRecord = latestSos;
+      sosAlarmTime = ResponseParser.parseAlarmTime(latestSos.body);
+    } else {
+      activeSosRecord = null;
+      sosAlarmTime = null;
     }
 
     batteryPercent = battery;
@@ -285,6 +309,31 @@ class AppState extends ChangeNotifier {
       }
     }
     notifyListeners();
+  }
+
+  /// Descarta la alerta SOS activa (no volverá a mostrarse para ese
+  /// mismo mensaje).
+  Future<void> dismissSosAlert() async {
+    final record = activeSosRecord;
+    if (record == null) return;
+    _dismissedSosKey = record.dedupeKey;
+    activeSosRecord = null;
+    sosAlarmTime = null;
+    await SmsChannel.setPref(_kSosDismissed, _dismissedSosKey);
+    notifyListeners();
+  }
+
+  /// Abre el discador con el número del rastreador (para llamarlo y
+  /// escuchar qué pasa; el dispositivo atiende automáticamente si tiene
+  /// respuesta automática configurada).
+  Future<void> callTracker() async {
+    final number = trackerNumber;
+    if (number == null || number.isEmpty) return;
+    try {
+      await SmsChannel.openUrl('tel:$number');
+    } catch (_) {
+      // Sin app de teléfono; se ignora.
+    }
   }
 
   /// Reintenta obtener las coordenadas del link de la última ubicación.

@@ -151,13 +151,18 @@ class _MessageBubble extends StatelessWidget {
     final body = record.body;
     final location =
         incoming ? ResponseParser.parseLocation(body, record.date) : null;
+    final isSos = incoming && ResponseParser.isSosAlert(body);
 
-    final bubbleColor = incoming
-        ? theme.colorScheme.surfaceContainerHighest
-        : theme.colorScheme.primaryContainer;
-    final textColor = incoming
-        ? theme.colorScheme.onSurface
-        : theme.colorScheme.onPrimaryContainer;
+    final bubbleColor = isSos
+        ? theme.colorScheme.errorContainer
+        : incoming
+            ? theme.colorScheme.surfaceContainerHighest
+            : theme.colorScheme.primaryContainer;
+    final textColor = isSos
+        ? theme.colorScheme.onErrorContainer
+        : incoming
+            ? theme.colorScheme.onSurface
+            : theme.colorScheme.onPrimaryContainer;
 
     return Align(
       alignment: incoming ? Alignment.centerLeft : Alignment.centerRight,
@@ -180,6 +185,25 @@ class _MessageBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isSos) ...[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.sos, size: 18, color: theme.colorScheme.error),
+                    const SizedBox(width: 6),
+                    Text(
+                      'ALERTA DE EMERGENCIA',
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+              ],
               Text(body, style: TextStyle(color: textColor)),
               if (location != null) ...[
                 const SizedBox(height: 6),

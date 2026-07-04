@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Aviso cuando el rastreador responde (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Alerta SOS: vibración y pantalla completa sobre el bloqueo -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:label="Rastreador SOS"

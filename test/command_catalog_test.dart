@@ -108,6 +108,37 @@ void main() {
       );
     });
 
+    test('mensaje SOS real: detección, Alarm Time, ubicación y batería', () {
+      const sos = 'Help Me\n'
+          'GSM and WIFI-Loc:\n'
+          'Loc Time:05/07/2026 07:41:27\n'
+          'Alarm Time:05/07/2026 07:41:19\n'
+          'Battery:77%\n'
+          'smart-locator.com/web/geolocation/wg/JCLRyrQiFZ3Xz8i0IhWd18182'
+          '5jYFA_IumaF-3bYyLhmhft03ych0gIiHPUTtKYU9RO2phT1E1IXFPwT7WcR9RP'
+          'QGBD8E7dhD_UTTRc=';
+
+      expect(ResponseParser.isSosAlert(sos), isTrue);
+      expect(
+        ResponseParser.parseAlarmTime(sos),
+        DateTime(2026, 7, 5, 7, 41, 19),
+      );
+      expect(ResponseParser.parseBattery(sos), 77);
+
+      final loc = ResponseParser.parseLocation(sos, DateTime(2026, 7, 5, 8));
+      expect(loc, isNotNull);
+      expect(loc!.mapUrl, startsWith('smart-locator.com/'));
+      expect(loc.deviceTime, DateTime(2026, 7, 5, 7, 41, 27));
+
+      // Los mensajes normales NO deben disparar la alerta.
+      expect(ResponseParser.isSosAlert('Battery: 85%'), isFalse);
+      expect(
+        ResponseParser.isSosAlert('GSM and WIFI-Loc:\nLoc Time:01/01/2034 '
+            '00:00:00\nBattery:83%\nsmart-locator.com/web/x'),
+        isFalse,
+      );
+    });
+
     test('coordenadas desde URLs de Google Maps (redirect del link)', () {
       expect(
         LocationResolver.extractCoordinates(

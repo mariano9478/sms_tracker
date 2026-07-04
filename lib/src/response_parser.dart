@@ -13,6 +13,16 @@ import 'models.dart';
 /// ```
 /// Notar que el link viene SIN `http://` y que la misma respuesta incluye
 /// la batería.
+///
+/// Cuando se activa el botón SOS, el mensaje llega con este formato:
+/// ```
+/// Help Me
+/// GSM and WIFI-Loc:
+/// Loc Time:05/07/2026 07:41:27
+/// Alarm Time:05/07/2026 07:41:19
+/// Battery:77%
+/// smart-locator.com/web/geolocation/wg/JCLRyrQiFZ3X...
+/// ```
 class ResponseParser {
   ResponseParser._();
 
@@ -30,6 +40,12 @@ class ResponseParser {
   /// "Loc Time:01/01/2034 00:00:00" (dd/MM/yyyy HH:mm:ss).
   static final RegExp _locTime = RegExp(
     r'Loc\s*Time\s*:\s*(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})',
+    caseSensitive: false,
+  );
+
+  /// "Alarm Time:05/07/2026 07:41:19" — presente en los mensajes de SOS.
+  static final RegExp _alarmTime = RegExp(
+    r'Alarm\s*Time\s*:\s*(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})',
     caseSensitive: false,
   );
 
@@ -83,8 +99,21 @@ class ResponseParser {
     );
   }
 
-  static DateTime? _parseLocTime(String body) {
-    final m = _locTime.firstMatch(body);
+  static DateTime? _parseLocTime(String body) =>
+      _dateTimeFromMatch(_locTime.firstMatch(body));
+
+  /// `true` si el mensaje es una alerta de emergencia (botón SOS, caída…).
+  static bool isSosAlert(String body) {
+    final lower = body.toLowerCase();
+    return lower.contains('help me') || lower.contains('alarm time');
+  }
+
+  /// Hora de activación de la alarma en un mensaje de SOS, si se puede
+  /// interpretar (dd/MM/yyyy HH:mm:ss).
+  static DateTime? parseAlarmTime(String body) =>
+      _dateTimeFromMatch(_alarmTime.firstMatch(body));
+
+  static DateTime? _dateTimeFromMatch(RegExpMatch? m) {
     if (m == null) return null;
     try {
       final day = int.parse(m.group(1)!);
