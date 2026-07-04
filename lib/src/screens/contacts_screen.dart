@@ -40,11 +40,26 @@ class ContactsScreen extends StatelessWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Ante una emergencia (botón SOS, caída, etc.) el rastreador '
-                  'avisa a estos números en orden. Es obligatorio configurar '
-                  'al menos uno, y conviene que el primero sea este teléfono.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ante una emergencia (botón SOS, caída, etc.) el rastreador '
+                      'avisa a estos números en orden. Es obligatorio configurar '
+                      'al menos uno, y conviene que el primero sea este teléfono.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.contactsSyncedAt == null
+                          ? 'Todavía no se sincronizó la lista con el '
+                              'dispositivo: tocá el botón de sincronizar (A?).'
+                          : 'Última sincronización con el dispositivo: '
+                              '${_formatSyncDate(state.contactsSyncedAt!)}. '
+                              'La app la renueva sola si pasa más de un mes.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ),
               for (var slot = 1; slot <= 10; slot++)
@@ -65,6 +80,12 @@ class ContactsScreen extends StatelessWidget {
       if (c.slot == slot) return c;
     }
     return null;
+  }
+
+  String _formatSyncDate(DateTime date) {
+    final dd = date.day.toString().padLeft(2, '0');
+    final mo = date.month.toString().padLeft(2, '0');
+    return '$dd/$mo/${date.year}';
   }
 }
 

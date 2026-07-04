@@ -38,6 +38,7 @@ separado de tus SMS personales.
 | 🗺️ **Mapa integrado** | Última ubicación conocida sobre un mapa (OpenStreetMap) con pin y zoom. Si el rastreador manda la posición como link (smart-locator), la app sigue su redirección a Google Maps, extrae las coordenadas y la muestra igual en el mapa. |
 | 🔔 **Notificaciones** | Aviso instantáneo cuando el rastreador responde — incluso con la app cerrada. Al tocarlo, la app se abre directo en el mapa o en los mensajes. |
 | 🆘 **Alerta SOS** | Cuando se activa el botón de emergencia ("Help Me"): notificación de ALARMA con sonido que se repite hasta atenderla, vibración, pantalla completa sobre el bloqueo, y dentro de la app una alerta roja pulsante con acciones directas (ver en el mapa / llamar al rastreador). |
+| 🚨 **Botón "hay una urgencia"** | Manteniéndolo apretado se abre una pantalla partida: aviso moderado (amarillo, "llamá a X, algo está pasando") o emergencia (rojo, "URGENTE"). Envía el mensaje elegido por SMS a todos los contactos de emergencia, con acceso directo a WhatsApp por contacto. Los contactos se sincronizan del dispositivo (`A?`) y se renuevan solos si tienen más de un mes. |
 | 🆘 **Contactos SOS** | Administra las 10 posiciones de números de emergencia (aviso por SMS y/o llamada), consulta la lista al dispositivo y sincroniza su respuesta. |
 | 🔘 **Botón lateral** | Elegí a qué contacto llama el botón de llamada rápida, o desactivalo. |
 | 🚨 **Sensores y alarmas** | Sensor de caída (sensibilidad 1–9), cerco virtual en metros y alerta de no movimiento. |

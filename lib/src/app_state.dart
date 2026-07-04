@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'command_catalog.dart';
 import 'location_resolver.dart';
 import 'models.dart';
 import 'response_parser.dart';
@@ -17,8 +18,14 @@ class AppState extends ChangeNotifier {
   static const _kContacts = 'contacts';
   static const _kResolvedCoords = 'resolved_locations';
   static const _kSosDismissed = 'sos_dismissed_key';
+  static const _kContactsSyncedAt = 'contacts_synced_at';
+  static const _kContactsSyncAttempt = 'contacts_sync_attempt';
   static const _maxSentLog = 300;
   static const _maxResolvedCache = 50;
+
+  /// Antigüedad máxima de los contactos sincronizados antes de volver a
+  /// consultar automáticamente al dispositivo con `A?`.
+  static const contactsMaxAge = Duration(days: 30);
 
   bool initialized = false;
   bool permissionsGranted = false;
@@ -31,6 +38,10 @@ class AppState extends ChangeNotifier {
 
   /// Contactos SOS conocidos (guardados localmente y/o parseados de `A?`).
   List<SosContact> contacts = [];
+
+  /// Fecha de la última respuesta `A?` del dispositivo (sincronización
+  /// real de contactos). `null` si nunca respondió.
+  DateTime? contactsSyncedAt;
 
   int? batteryPercent;
   DateTime? batteryReportedAt;
@@ -72,10 +83,13 @@ class AppState extends ChangeNotifier {
     _resolvedCoords =
         _decodeResolved(await SmsChannel.getPref(_kResolvedCoords));
     _dismissedSosKey = await SmsChannel.getPref(_kSosDismissed);
+    final syncedRaw = await SmsChannel.getPref(_kContactsSyncedAt);
+    contactsSyncedAt = syncedRaw == null ? null : DateTime.tryParse(syncedRaw);
     permissionsGranted = await SmsChannel.hasPermissions();
     if (permissionsGranted && isConfigured) {
       await refreshInbox();
       _listenIncoming();
+      unawaited(_maybeAutoSyncContacts());
     }
     // Navegación desde notificaciones: app ya corriendo (handler) o
     // recién abierta desde la notificación (consumeLaunchView).
@@ -223,6 +237,7 @@ class AppState extends ChangeNotifier {
     DateTime? batteryAt;
     TrackerLocation? location;
     SmsRecord? latestSos;
+    DateTime? contactsReportedAt;
     final deviceContacts = <int, SosContact>{};
 
     for (final r in records) {
@@ -235,7 +250,9 @@ class AppState extends ChangeNotifier {
       final loc = ResponseParser.parseLocation(r.body, r.date);
       if (loc != null) location = loc;
       if (ResponseParser.isSosAlert(r.body)) latestSos = r;
-      for (final c in ResponseParser.parseContacts(r.body)) {
+      final parsedContacts = ResponseParser.parseContacts(r.body);
+      if (parsedContacts.isNotEmpty) contactsReportedAt = r.date;
+      for (final c in parsedContacts) {
         deviceContacts[c.slot] = c;
       }
     }
@@ -269,6 +286,69 @@ class AppState extends ChangeNotifier {
       }
       contacts.sort((a, b) => a.slot.compareTo(b.slot));
       unawaited(SmsChannel.setPref(_kContacts, _encodeContacts(contacts)));
+      if (contactsReportedAt != null &&
+          (contactsSyncedAt == null ||
+              contactsReportedAt.isAfter(contactsSyncedAt!))) {
+        contactsSyncedAt = contactsReportedAt;
+        unawaited(SmsChannel.setPref(
+            _kContactsSyncedAt, contactsReportedAt.toIso8601String()));
+      }
+    }
+  }
+
+  /// Consulta `A?` automáticamente si la última sincronización de
+  /// contactos tiene más de [contactsMaxAge] (con un reintento diario
+  /// como máximo, para no gastar SMS si el dispositivo no responde).
+  Future<void> _maybeAutoSyncContacts() async {
+    if (!permissionsGranted || !isConfigured) return;
+    final now = DateTime.now();
+    if (contactsSyncedAt != null &&
+        now.difference(contactsSyncedAt!) < contactsMaxAge) {
+      return;
+    }
+    final attemptRaw = await SmsChannel.getPref(_kContactsSyncAttempt);
+    final lastAttempt = attemptRaw == null ? null : DateTime.tryParse(attemptRaw);
+    if (lastAttempt != null &&
+        now.difference(lastAttempt) < const Duration(days: 1)) {
+      return;
+    }
+    await SmsChannel.setPref(_kContactsSyncAttempt, now.toIso8601String());
+    await sendCommand(TrackerCommands.viewContacts);
+  }
+
+  /// Envía [message] por SMS a cada número de [numbers] (aviso manual de
+  /// urgencia a los contactos de emergencia). Devuelve cuántos salieron.
+  Future<int> sendUrgencyMessage({
+    required List<String> numbers,
+    required String message,
+  }) async {
+    if (!permissionsGranted) return 0;
+    var sent = 0;
+    for (final number in numbers) {
+      try {
+        await SmsChannel.sendSms(to: number, body: message);
+        sent++;
+      } catch (_) {
+        // Se sigue con el resto de los contactos.
+      }
+    }
+    return sent;
+  }
+
+  /// Abre WhatsApp con el chat de [number] y [message] ya escrito.
+  /// Requiere que el número incluya código de país para que WhatsApp lo
+  /// resuelva (ej: 54911...).
+  Future<void> openWhatsApp({
+    required String number,
+    required String message,
+  }) async {
+    final digits = number.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return;
+    final url = 'https://wa.me/$digits?text=${Uri.encodeComponent(message)}';
+    try {
+      await SmsChannel.openUrl(url);
+    } catch (_) {
+      // WhatsApp no disponible; se ignora.
     }
   }
 

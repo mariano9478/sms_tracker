@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../command_catalog.dart';
 import 'home_shell.dart';
+import 'urgency_screen.dart';
 
 /// Pantalla de inicio: estado del rastreador y acciones rápidas.
 class DashboardScreen extends StatelessWidget {
@@ -35,6 +36,8 @@ class DashboardScreen extends StatelessWidget {
             Text('Acciones rápidas', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             _QuickActions(state: state),
+            const SizedBox(height: 16),
+            _UrgencyButton(state: state),
             const SizedBox(height: 16),
             _HowItWorksCard(state: state),
             const SizedBox(height: 12),
@@ -279,6 +282,73 @@ class _QuickActions extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Botón rojo de urgencia manual: manteniéndolo apretado se abre la
+/// pantalla partida (aviso moderado / emergencia) para avisar a los
+/// contactos de emergencia desde este teléfono.
+class _UrgencyButton extends StatelessWidget {
+  const _UrgencyButton({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFC62828),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onLongPress: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => UrgencyScreen(state: state)),
+        ),
+        onTap: () {
+          // El tap corto solo muestra la ayuda: el gesto real es mantener
+          // apretado, para evitar aperturas accidentales.
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.hideCurrentSnackBar();
+          messenger.showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Mantené APRETADO el botón para avisar una urgencia.'),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          child: Row(
+            children: [
+              const Icon(Icons.emergency_share, color: Colors.white, size: 32),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'HAY UNA URGENCIA',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Mantené apretado para avisar a los contactos de emergencia',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.touch_app, color: Colors.white70),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
