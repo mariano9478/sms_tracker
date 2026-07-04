@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'location_resolver.dart';
 import 'models.dart';
 import 'response_parser.dart';
 import 'sms_channel.dart';
@@ -14,7 +15,9 @@ class AppState extends ChangeNotifier {
   static const _kTrackerName = 'tracker_name';
   static const _kSentLog = 'sent_log';
   static const _kContacts = 'contacts';
+  static const _kResolvedCoords = 'resolved_locations';
   static const _maxSentLog = 300;
+  static const _maxResolvedCache = 50;
 
   bool initialized = false;
   bool permissionsGranted = false;
@@ -32,12 +35,20 @@ class AppState extends ChangeNotifier {
   DateTime? batteryReportedAt;
   TrackerLocation? lastLocation;
 
+  /// `true` mientras se están obteniendo las coordenadas del link de
+  /// ubicación (siguiendo su redirección a Google Maps).
+  bool resolvingLocation = false;
+
   /// Vista que la UI debe mostrar (por ej. al tocar una notificación):
   /// 'map', 'messages'… La consume [HomeShell] y la vuelve a null.
   final ValueNotifier<String?> viewRequest = ValueNotifier<String?>(null);
 
   StreamSubscription<Map<String, dynamic>>? _incomingSub;
   List<SmsRecord> _sentLog = [];
+
+  /// Caché url → [lat, lng] de links ya resueltos, persistida.
+  Map<String, List<double>> _resolvedCoords = {};
+  String? _resolvingUrl;
 
   bool get isConfigured =>
       trackerNumber != null && trackerNumber!.trim().isNotEmpty;
@@ -47,6 +58,8 @@ class AppState extends ChangeNotifier {
     trackerName = await SmsChannel.getPref(_kTrackerName) ?? 'Mi rastreador';
     _sentLog = _decodeRecords(await SmsChannel.getPref(_kSentLog));
     contacts = _decodeContacts(await SmsChannel.getPref(_kContacts));
+    _resolvedCoords =
+        _decodeResolved(await SmsChannel.getPref(_kResolvedCoords));
     permissionsGranted = await SmsChannel.hasPermissions();
     if (permissionsGranted && isConfigured) {
       await refreshInbox();
@@ -215,7 +228,14 @@ class AppState extends ChangeNotifier {
 
     batteryPercent = battery;
     batteryReportedAt = batteryAt;
-    lastLocation = location;
+    lastLocation = _withResolvedCoords(location);
+
+    // Link sin coordenadas: se resuelve en segundo plano siguiendo la
+    // redirección a Google Maps para poder mostrarlo en el mapa integrado.
+    final pending = lastLocation;
+    if (pending != null && !pending.hasCoordinates && pending.mapUrl != null) {
+      unawaited(_resolveLocation(pending));
+    }
 
     if (deviceContacts.isNotEmpty) {
       // Lo reportado por el dispositivo pisa la copia local.
@@ -225,6 +245,68 @@ class AppState extends ChangeNotifier {
       }
       contacts.sort((a, b) => a.slot.compareTo(b.slot));
       unawaited(SmsChannel.setPref(_kContacts, _encodeContacts(contacts)));
+    }
+  }
+
+  /// Completa las coordenadas desde la caché si el link ya fue resuelto.
+  TrackerLocation? _withResolvedCoords(TrackerLocation? location) {
+    if (location == null || location.hasCoordinates) return location;
+    final cached = _resolvedCoords[location.mapUrl];
+    if (cached == null || cached.length != 2) return location;
+    return TrackerLocation(
+      latitude: cached[0],
+      longitude: cached[1],
+      mapUrl: location.mapUrl,
+      deviceTime: location.deviceTime,
+      reportedAt: location.reportedAt,
+    );
+  }
+
+  Future<void> _resolveLocation(TrackerLocation location) async {
+    final url = location.mapUrl;
+    if (url == null || _resolvingUrl == url) return;
+    _resolvingUrl = url;
+    resolvingLocation = true;
+    notifyListeners();
+
+    final coords = await LocationResolver.resolve(location.openUrl);
+
+    _resolvingUrl = null;
+    resolvingLocation = false;
+    if (coords != null) {
+      if (_resolvedCoords.length >= _maxResolvedCache) {
+        _resolvedCoords = {};
+      }
+      _resolvedCoords[url] = [coords.lat, coords.lng];
+      unawaited(
+          SmsChannel.setPref(_kResolvedCoords, jsonEncode(_resolvedCoords)));
+      if (lastLocation?.mapUrl == url) {
+        lastLocation = _withResolvedCoords(lastLocation);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Reintenta obtener las coordenadas del link de la última ubicación.
+  Future<void> retryResolveLocation() async {
+    final location = lastLocation;
+    if (location != null && !location.hasCoordinates) {
+      await _resolveLocation(location);
+    }
+  }
+
+  Map<String, List<double>> _decodeResolved(String? raw) {
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      return map.map((key, value) => MapEntry(
+            key,
+            (value as List<dynamic>)
+                .map((e) => (e as num).toDouble())
+                .toList(),
+          ));
+    } catch (_) {
+      return {};
     }
   }
 

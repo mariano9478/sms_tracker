@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sms_tracker/src/command_catalog.dart';
+import 'package:sms_tracker/src/location_resolver.dart';
 import 'package:sms_tracker/src/response_parser.dart';
 
 void main() {
@@ -103,6 +104,36 @@ void main() {
     test('sin ubicación', () {
       expect(
         ResponseParser.parseLocation('Battery: 85%', DateTime(2026)),
+        isNull,
+      );
+    });
+
+    test('coordenadas desde URLs de Google Maps (redirect del link)', () {
+      expect(
+        LocationResolver.extractCoordinates(
+            'https://maps.google.com/maps?q=-34.60371,-58.38157'),
+        (lat: -34.60371, lng: -58.38157),
+      );
+      expect(
+        LocationResolver.extractCoordinates(
+            'https://www.google.com/maps/@-34.60371,-58.38157,17z'),
+        (lat: -34.60371, lng: -58.38157),
+      );
+      // Coma codificada en la URL.
+      expect(
+        LocationResolver.extractCoordinates(
+            'https://maps.google.com/?q=-34.60371%2C-58.38157'),
+        (lat: -34.60371, lng: -58.38157),
+      );
+      // Sin coordenadas plausibles.
+      expect(
+        LocationResolver.extractCoordinates(
+            'https://smart-locator.com/web/geolocation/wg/ABC123='),
+        isNull,
+      );
+      // Fuera de rango.
+      expect(
+        LocationResolver.extractCoordinates('q=134.60371,-258.38157'),
         isNull,
       );
     });

@@ -35,7 +35,7 @@ separado de tus SMS personales.
 | | |
 |---|---|
 | 🏠 **Dashboard** | Última batería y ubicación conocidas, apertura en Google Maps y acciones rápidas de un toque: Ubicación, Batería, Estado y Hacer sonar. |
-| 🗺️ **Mapa integrado** | Última ubicación conocida sobre un mapa (OpenStreetMap) con pin y zoom; si el rastreador manda la posición como link (smart-locator), acceso directo para abrirlo. |
+| 🗺️ **Mapa integrado** | Última ubicación conocida sobre un mapa (OpenStreetMap) con pin y zoom. Si el rastreador manda la posición como link (smart-locator), la app sigue su redirección a Google Maps, extrae las coordenadas y la muestra igual en el mapa. |
 | 🔔 **Notificaciones** | Aviso instantáneo cuando el rastreador responde — incluso con la app cerrada. Al tocarlo, la app se abre directo en el mapa o en los mensajes. |
 | 🆘 **Contactos SOS** | Administra las 10 posiciones de números de emergencia (aviso por SMS y/o llamada), consulta la lista al dispositivo y sincroniza su respuesta. |
 | 🔘 **Botón lateral** | Elegí a qué contacto llama el botón de llamada rápida, o desactivalo. |
@@ -158,7 +158,8 @@ OpenStreetMap).
 
 - **Tus datos no salen del teléfono**: no hay servidores propios ni
   analytics. La única red que usa la app es la descarga de imágenes de mapa
-  de OpenStreetMap y la apertura del link de ubicación en tu navegador.
+  de OpenStreetMap y la resolución del link de ubicación que envía el
+  propio rastreador (redirige a Google Maps).
 - Cada comando es un SMS común: tu plan puede cobrarlo.
 - La escucha remota debe usarse de forma responsable y con consentimiento de
   quien porta el dispositivo.

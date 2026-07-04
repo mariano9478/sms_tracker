@@ -105,9 +105,10 @@ class _NoLocationView extends StatelessWidget {
   }
 }
 
-/// La respuesta típica de estos rastreadores trae la posición como un link
-/// (smart-locator.com/...) sin coordenadas: se muestra tarjeta con acceso
-/// directo al link.
+/// La respuesta trae la posición como un link (smart-locator) que redirige
+/// a Google Maps. La app resuelve esa redirección en segundo plano para
+/// mostrar la posición en el mapa integrado: mientras tanto (o si falla)
+/// se muestra esta tarjeta.
 class _LinkOnlyView extends StatelessWidget {
   const _LinkOnlyView({
     required this.state,
@@ -122,6 +123,7 @@ class _LinkOnlyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final resolving = state.resolvingLocation;
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -134,18 +136,40 @@ class _LinkOnlyView extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.place, size: 56, color: theme.colorScheme.primary),
+                  if (resolving)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Center(
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                    )
+                  else
+                    Icon(Icons.place,
+                        size: 56, color: theme.colorScheme.primary),
                   const SizedBox(height: 12),
                   Text(
-                    'Ubicación recibida',
+                    resolving
+                        ? 'Obteniendo la posición…'
+                        : 'Ubicación recibida',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'El rastreador envió su posición como un link de mapa '
-                    '(${formatDateTime(location.reportedAt)}). '
-                    'Tocá el botón para verla.',
+                    resolving
+                        ? 'El rastreador envió un link de mapa '
+                            '(${formatDateTime(location.reportedAt)}). '
+                            'Se están obteniendo las coordenadas para '
+                            'mostrarlo acá.'
+                        : 'El rastreador envió un link de mapa '
+                            '(${formatDateTime(location.reportedAt)}), pero '
+                            'no se pudieron obtener las coordenadas '
+                            'automáticamente (¿sin internet?). Podés '
+                            'reintentar o abrir el link directo.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium,
                   ),
@@ -159,16 +183,24 @@ class _LinkOnlyView extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  FilledButton.icon(
+                  if (!resolving) ...[
+                    FilledButton.icon(
+                      onPressed: () => state.retryResolveLocation(),
+                      icon: const Icon(Icons.travel_explore),
+                      label: const Text('Reintentar mostrar en el mapa'),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  OutlinedButton.icon(
                     onPressed: () => state.openMap(),
-                    icon: const Icon(Icons.map),
-                    label: const Text('Ver ubicación en el mapa'),
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text('Abrir link de ubicación'),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: onRequest,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Actualizar ubicación'),
+                    label: const Text('Pedir ubicación nueva'),
                   ),
                 ],
               ),
