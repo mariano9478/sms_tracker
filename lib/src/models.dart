@@ -85,6 +85,16 @@ class TrackerLocation {
 
   bool get hasCoordinates => latitude != null && longitude != null;
 
+  /// `true` si la hora reportada por el dispositivo parece confiable
+  /// (menos de 48 h de diferencia con la recepción del SMS). Si el
+  /// rastreador todavía no sincronizó su reloj con la red/GPS puede
+  /// reportar fechas absurdas como 01/01/2034.
+  bool get deviceTimeReliable {
+    final dt = deviceTime;
+    if (dt == null) return false;
+    return dt.difference(reportedAt).abs() <= const Duration(hours: 48);
+  }
+
   /// URL para abrir en el navegador / app de mapas. Los rastreadores suelen
   /// mandar el link sin esquema (ej: "smart-locator.com/..."), así que se
   /// normaliza a https.

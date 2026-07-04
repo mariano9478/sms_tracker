@@ -21,7 +21,8 @@ void main() {
 
     test('botón lateral', () {
       expect(TrackerCommands.sideButton(1), 'X1');
-      expect(TrackerCommands.sideButtonOff, 'XO');
+      // Con CERO, no letra O (guía v1.5).
+      expect(TrackerCommands.sideButtonOff, 'X0');
     });
 
     test('sensores y alarmas', () {
@@ -29,13 +30,28 @@ void main() {
         TrackerCommands.fallSensor(sensitivity: 5, call: true),
         'FL1,5,1',
       );
-      expect(TrackerCommands.fallSensorOff, 'FLO');
-      expect(TrackerCommands.geofence(meters: 100), 'GE01,1,0,100M');
+      expect(TrackerCommands.fallSensorOff, 'FL0');
+      expect(TrackerCommands.geofence(meters: 100), 'GEO1,1,0,100M');
       expect(
-        TrackerCommands.noMovement(minutes: 80, call: true),
+        TrackerCommands.geofence(slot: 2, meters: 500),
+        'GEO2,1,0,500M',
+      );
+      expect(
+        TrackerCommands.noMovement(amount: 80, call: true),
         'NMO1,80M,1',
       );
-      expect(TrackerCommands.noMovementOff, 'NMOO');
+      expect(
+        TrackerCommands.noMovement(amount: 10, unit: 'H', call: false),
+        'NMO1,10H,0',
+      );
+      expect(TrackerCommands.noMovementOff, 'NMO0');
+    });
+
+    test('secuencia de llamadas y llamadas entrantes', () {
+      expect(TrackerCommands.callSequence(interrupt: false), 'SCS0');
+      expect(TrackerCommands.callSequence(interrupt: true), 'SCS1');
+      expect(TrackerCommands.callIn(all: true), 'callin1');
+      expect(TrackerCommands.callIn(all: false), 'callin0');
     });
 
     test('consultas', () {
@@ -47,9 +63,15 @@ void main() {
 
     test('avanzados y audio', () {
       expect(TrackerCommands.remoteListenOn, 'LT1');
-      expect(TrackerCommands.remoteListenOff, 'LTO');
-      expect(TrackerCommands.ringVolume(50), r'$rt50$');
+      expect(TrackerCommands.remoteListenOff, 'LT0');
+      expect(TrackerCommands.ringVolume(50), 'rt50');
       expect(TrackerCommands.micVolume(10), 'micvolume10');
+      expect(TrackerCommands.speakerVolume(90), 'speakervolume90');
+      expect(TrackerCommands.sosSpeaker(on: true), 'sosspeaker1');
+      expect(TrackerCommands.sosSpeaker(on: false), 'sosspeaker0');
+      expect(TrackerCommands.beepVoices(on: true), 'beep1');
+      expect(TrackerCommands.beepVoices(on: false), 'beep0');
+      expect(TrackerCommands.deviceName('Mamá'), 'Prefix1,Mamá');
       expect(TrackerCommands.timeZone(-3), 'TZ-03');
       expect(TrackerCommands.timeZone(5), 'TZ05');
       expect(TrackerCommands.lowBatteryAlert(20), 'Low1,20');
@@ -96,6 +118,8 @@ void main() {
       expect(loc.openUrl, endsWith('='));
       expect(loc.reportedAt, now);
       expect(loc.deviceTime, DateTime(2034, 1, 1, 0, 0, 0));
+      // Reloj sin sincronizar (2034 vs 2026): se marca como no confiable.
+      expect(loc.deviceTimeReliable, isFalse);
 
       // La misma respuesta trae la batería.
       expect(ResponseParser.parseBattery(sample), 83);
@@ -129,6 +153,8 @@ void main() {
       expect(loc, isNotNull);
       expect(loc!.mapUrl, startsWith('smart-locator.com/'));
       expect(loc.deviceTime, DateTime(2026, 7, 5, 7, 41, 27));
+      // Reloj sincronizado (misma fecha que la recepción): confiable.
+      expect(loc.deviceTimeReliable, isTrue);
 
       // Los mensajes normales NO deben disparar la alerta.
       expect(ResponseParser.isSosAlert('Battery: 85%'), isFalse);

@@ -4,6 +4,8 @@ import '../app_state.dart';
 import '../command_catalog.dart';
 import 'contacts_screen.dart';
 import 'home_shell.dart';
+import 'sheets/choice_sheet.dart';
+import 'sheets/device_name_sheet.dart';
 import 'sheets/fall_sensor_sheet.dart';
 import 'sheets/geofence_sheet.dart';
 import 'sheets/low_battery_sheet.dart';
@@ -11,6 +13,7 @@ import 'sheets/mic_volume_sheet.dart';
 import 'sheets/no_movement_sheet.dart';
 import 'sheets/ring_volume_sheet.dart';
 import 'sheets/side_button_sheet.dart';
+import 'sheets/speaker_volume_sheet.dart';
 import 'sheets/time_zone_sheet.dart';
 
 /// Todas las funciones del rastreador organizadas por categoría.
@@ -63,6 +66,67 @@ class CommandsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openSheet(context, SideButtonSheet(state: state)),
           ),
+          ListTile(
+            leading: const Icon(Icons.phone_forwarded_outlined),
+            title: const Text('Secuencia de llamadas SOS'),
+            subtitle: const Text(
+                'Qué hace el rastreador cuando un contacto atiende la llamada de emergencia.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openSheet(
+              context,
+              ChoiceCommandSheet(
+                state: state,
+                title: 'Secuencia de llamadas SOS',
+                description:
+                    'En una emergencia el rastreador llama a los contactos '
+                    'en orden. Definí qué pasa cuando uno atiende (todos '
+                    'reciben el SMS de aviso igualmente).',
+                initialIndex: 1,
+                choices: [
+                  CommandChoice(
+                    label: 'Seguir llamando al resto',
+                    description: 'Valor de fábrica (SCS0).',
+                    command: TrackerCommands.callSequence(interrupt: false),
+                  ),
+                  CommandChoice(
+                    label: 'Cortar la secuencia al ser atendido',
+                    description: 'Sugerido por el fabricante (SCS1).',
+                    command: TrackerCommands.callSequence(interrupt: true),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.call_received_outlined),
+            title: const Text('Llamadas entrantes'),
+            subtitle: const Text(
+                'Aceptar llamadas de cualquiera o solo de los contactos (lista blanca).'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openSheet(
+              context,
+              ChoiceCommandSheet(
+                state: state,
+                title: 'Llamadas entrantes',
+                description:
+                    'El dispositivo atiende automáticamente después de dos '
+                    'rings. Definí quiénes pueden llamarlo.',
+                choices: [
+                  CommandChoice(
+                    label: 'Aceptar todas las llamadas',
+                    description: 'Cualquier número puede llamar (callin1).',
+                    command: TrackerCommands.callIn(all: true),
+                  ),
+                  CommandChoice(
+                    label: 'Solo contactos de emergencia',
+                    description:
+                        'Lista blanca: rechaza al resto (callin0).',
+                    command: TrackerCommands.callIn(all: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
           _SectionHeader(theme: theme, title: 'Sensores y alarmas'),
           ListTile(
             leading: const Icon(Icons.personal_injury_outlined),
@@ -107,15 +171,90 @@ class CommandsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.mic_none_outlined),
             title: const Text('Volumen del micrófono'),
-            subtitle: const Text('De 0 a 15.'),
+            subtitle: const Text('De 0 a 15 (fábrica: 8).'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openSheet(context, MicVolumeSheet(state: state)),
           ),
+          ListTile(
+            leading: const Icon(Icons.speaker_outlined),
+            title: const Text('Volumen del parlante'),
+            subtitle: const Text('De 0 a 100 (fábrica: 80).'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openSheet(context, SpeakerVolumeSheet(state: state)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.campaign_outlined),
+            title: const Text('Parlante en llamadas SOS'),
+            subtitle: const Text(
+                'Altavoz durante las llamadas de emergencia (sugerido: apagado).'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openSheet(
+              context,
+              ChoiceCommandSheet(
+                state: state,
+                title: 'Parlante en llamadas SOS',
+                description:
+                    'Define si las llamadas de emergencia usan el altavoz '
+                    'del dispositivo.',
+                initialIndex: 1,
+                choices: [
+                  CommandChoice(
+                    label: 'Encendido',
+                    description: 'sosspeaker1',
+                    command: TrackerCommands.sosSpeaker(on: true),
+                  ),
+                  CommandChoice(
+                    label: 'Apagado',
+                    description: 'Sugerido por el fabricante (sosspeaker0).',
+                    command: TrackerCommands.sosSpeaker(on: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.record_voice_over_outlined),
+            title: const Text('Voces del dispositivo'),
+            subtitle: const Text(
+                'Activar o eliminar los avisos de voz de fábrica.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openSheet(
+              context,
+              ChoiceCommandSheet(
+                state: state,
+                title: 'Voces del dispositivo',
+                description:
+                    'El rastreador anuncia con voz algunas acciones '
+                    '("Llamando al contacto número 1", etc.).',
+                choices: [
+                  CommandChoice(
+                    label: 'Dejar las voces de fábrica',
+                    description: 'beep1',
+                    command: TrackerCommands.beepVoices(on: true),
+                  ),
+                  CommandChoice(
+                    label: 'Eliminar las voces',
+                    description: 'beep0',
+                    command: TrackerCommands.beepVoices(on: false),
+                  ),
+                ],
+              ),
+            ),
+          ),
           _SectionHeader(theme: theme, title: 'Sistema'),
           ListTile(
+            leading: const Icon(Icons.label_outline),
+            title: const Text('Nombre del dispositivo'),
+            subtitle: const Text(
+                'El rastreador incluirá el nombre en los SMS que envía.'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _openSheet(context, DeviceNameSheet(state: state)),
+          ),
+          ListTile(
             leading: const Icon(Icons.schedule_outlined),
-            title: const Text('Zona horaria'),
-            subtitle: const Text('Ej: -03 para Argentina.'),
+            title: const Text('Zona horaria y hora'),
+            subtitle: const Text(
+                'La hora se sincroniza sola de la red; acá se corrige la zona (-03 Argentina).'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _openSheet(context, TimeZoneSheet(state: state)),
           ),
@@ -149,7 +288,7 @@ class CommandsScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'off'),
-            child: const Text('Desactivar (LTO)'),
+            child: const Text('Desactivar (LT0)'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'on'),
@@ -171,7 +310,7 @@ class CommandsScreen extends StatelessWidget {
         context,
         state,
         TrackerCommands.remoteListenOff,
-        successMessage: 'Escucha remota desactivada (LTO).',
+        successMessage: 'Escucha remota desactivada (LT0).',
       );
     }
   }

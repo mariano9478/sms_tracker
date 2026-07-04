@@ -173,13 +173,26 @@ class _LinkOnlyView extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium,
                   ),
-                  if (location.deviceTime != null) ...[
+                  if (location.deviceTimeReliable) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Hora reportada por el dispositivo: '
                       '${formatDateTime(location.deviceTime!)}',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall,
+                    ),
+                  ] else if (location.deviceTime != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '⚠️ El reloj del rastreador está desincronizado '
+                      '(reportó ${formatDateTime(location.deviceTime!)}). '
+                      'Se corrige solo cuando el dispositivo obtiene señal '
+                      'de red/GPS; verificá la zona horaria en '
+                      'Comandos → Zona horaria y hora (TZ-03).',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 20),

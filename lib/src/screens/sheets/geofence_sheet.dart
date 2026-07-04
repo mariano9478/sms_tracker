@@ -16,6 +16,7 @@ class GeofenceSheet extends StatefulWidget {
 
 class _GeofenceSheetState extends State<GeofenceSheet> {
   final _controller = TextEditingController(text: '100');
+  int _slot = 1;
 
   @override
   void dispose() {
@@ -31,15 +32,29 @@ class _GeofenceSheetState extends State<GeofenceSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final command = TrackerCommands.geofence(meters: _meters);
+    final command = TrackerCommands.geofence(slot: _slot, meters: _meters);
     return CommandSheetScaffold(
       title: 'Cerco virtual',
       description:
-          'El rastreador avisa si se aleja más de la distancia indicada '
-          'desde su posición actual. Para cambiar el radio, volvé a enviar '
-          'el comando con otro valor.',
+          'El rastreador avisa por SMS si se aleja más de la distancia '
+          'indicada. Importante: al configurarlo, el dispositivo debe '
+          'estar en el lugar a monitorear (ej: la casa de la persona). '
+          'Hay dos cercos independientes.',
       commandPreview: command,
       children: [
+        DropdownButtonFormField<int>(
+          value: _slot,
+          decoration: const InputDecoration(
+            labelText: 'Cerco',
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(value: 1, child: Text('Cerco 1 (GEO1)')),
+            DropdownMenuItem(value: 2, child: Text('Cerco 2 (GEO2)')),
+          ],
+          onChanged: (v) => setState(() => _slot = v ?? 1),
+        ),
+        const SizedBox(height: 12),
         TextField(
           controller: _controller,
           keyboardType: TextInputType.number,
@@ -58,7 +73,8 @@ class _GeofenceSheetState extends State<GeofenceSheet> {
           context,
           widget.state,
           command,
-          successMessage: 'Cerco virtual de $_meters m configurado.',
+          successMessage:
+              'Cerco virtual $_slot de $_meters m configurado.',
         );
       },
     );

@@ -58,19 +58,32 @@ La app cubre el catálogo completo de la guía oficial:
 | Agregar contacto SOS | `A(n),(sms),(llamada),(número)` | Contactos SOS |
 | Ver contactos | `A?` | Contactos SOS |
 | Eliminar contacto | `removeA(n)` | Contactos SOS |
-| Botón lateral | `X(n)` / `XO` | Botón lateral |
-| Sensor de caída | `FL1,(1-9),(0/1)` / `FLO` | Sensores |
-| Cerco virtual | `GE0(n),1,0,(m)M` | Sensores |
-| Alerta de no movimiento | `NMO1,(min)M,(0/1)` / `NMOO` | Sensores |
+| Secuencia de llamadas SOS | `SCS0` / `SCS1` | Comandos |
+| Botón lateral | `X(n)` / `X0` | Botón lateral |
+| Llamadas entrantes (lista blanca) | `callin1` / `callin0` | Comandos |
+| Sensor de caída | `FL1,(1-9),(0/1)` / `FL0` | Sensores |
+| Cercos virtuales (2) | `GEO(1-2),1,0,(m)M` | Sensores |
+| Alerta de no movimiento | `NMO1,(t)(S/M/H),(0/1)` / `NMO0` | Sensores |
 | Ubicación actual | `loc` | Inicio |
 | Estado de batería | `Battery` | Inicio |
 | Configuración actual | `Status` | Inicio |
 | Hacer sonar ("acá estoy") | `Findme` | Inicio |
-| Escucha remota | `LT1` / `LTO` | Audio |
-| Volumen del timbre | `$rt(0-100)$` | Audio |
+| Escucha remota | `LT1` / `LT0` | Audio |
+| Volumen del timbre | `rt(0-100)` | Audio |
 | Volumen del micrófono | `micvolume(0-15)` | Audio |
+| Volumen del parlante | `speakervolume(0-100)` | Audio |
+| Parlante en llamadas SOS | `sosspeaker1` / `sosspeaker0` | Audio |
+| Voces del dispositivo | `beep1` / `beep0` | Audio |
+| Nombre del dispositivo | `Prefix1,(nombre)` | Sistema |
 | Zona horaria | `TZ(offset)` | Sistema |
 | Alerta de batería baja | `Low1,(porcentaje)` | Sistema |
+
+> **Nota sobre fecha y hora**: el dispositivo no tiene comando para fijar
+> fecha/hora manualmente — su reloj se sincroniza solo desde la red
+> celular/GPS. Lo único configurable es la zona horaria (`TZ-03`). Si el
+> reloj reporta una fecha absurda (ej: `01/01/2034`), la app lo detecta,
+> oculta esa hora y muestra un aviso con la sugerencia de verificar señal
+> y zona horaria.
 
 ## 🚀 Empezar
 

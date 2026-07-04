@@ -22,7 +22,9 @@ class _SideButtonSheetState extends State<SideButtonSheet> {
     return CommandSheetScaffold(
       title: 'Botón lateral',
       description:
-          'El botón de llamada rápida marcará al contacto de emergencia elegido.',
+          'El botón de llamada rápida marcará al contacto de emergencia '
+          'elegido. De fábrica viene configurado para llamar al 2do '
+          'contacto (X2): usá esto solo si querés cambiarlo.',
       commandPreview: TrackerCommands.sideButton(_slot),
       children: [
         DropdownButtonFormField<int>(
@@ -51,7 +53,7 @@ class _SideButtonSheetState extends State<SideButtonSheet> {
               'Listo: el botón lateral llamará al contacto $_slot.',
         );
       },
-      secondaryLabel: 'Desactivar botón lateral (XO)',
+      secondaryLabel: 'Desactivar botón lateral (X0)',
       onSecondary: () async {
         Navigator.pop(context);
         await sendCommandWithFeedback(

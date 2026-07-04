@@ -98,7 +98,10 @@ class _SosAlertOverlayState extends State<SosAlertOverlay>
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (alarmTime != null)
+                if (alarmTime != null &&
+                    record != null &&
+                    alarmTime.difference(record.date).abs() <=
+                        const Duration(hours: 48))
                   _InfoLine(
                     icon: Icons.access_time_filled,
                     text: 'Activado ${formatDateTime(alarmTime)}',

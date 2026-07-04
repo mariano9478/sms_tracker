@@ -57,7 +57,7 @@ class _FallSensorSheetState extends State<FallSensorSheet> {
           successMessage: 'Sensor de caída configurado.',
         );
       },
-      secondaryLabel: 'Desactivar sensor de caída (FLO)',
+      secondaryLabel: 'Desactivar sensor de caída (FL0)',
       onSecondary: () async {
         Navigator.pop(context);
         await sendCommandWithFeedback(

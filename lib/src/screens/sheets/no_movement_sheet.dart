@@ -16,7 +16,15 @@ class NoMovementSheet extends StatefulWidget {
 
 class _NoMovementSheetState extends State<NoMovementSheet> {
   final _controller = TextEditingController(text: '80');
+  String _unit = 'M';
   bool _call = true;
+
+  static const _unitLabels = {
+    'S': 'segundos (máx. 36000)',
+    'M': 'minutos (máx. 600)',
+    'H': 'horas (máx. 10)',
+  };
+  static const _unitMax = {'S': 36000, 'M': 600, 'H': 10};
 
   @override
   void dispose() {
@@ -24,15 +32,16 @@ class _NoMovementSheetState extends State<NoMovementSheet> {
     super.dispose();
   }
 
-  int get _minutes {
+  int get _amount {
     final v = int.tryParse(_controller.text.trim());
     if (v == null || v < 1) return 80;
-    return v;
+    return v.clamp(1, _unitMax[_unit]!);
   }
 
   @override
   Widget build(BuildContext context) {
-    final command = TrackerCommands.noMovement(minutes: _minutes, call: _call);
+    final command =
+        TrackerCommands.noMovement(amount: _amount, unit: _unit, call: _call);
     return CommandSheetScaffold(
       title: 'Alerta de no movimiento',
       description:
@@ -40,16 +49,40 @@ class _NoMovementSheetState extends State<NoMovementSheet> {
           'indicado, avisa a los contactos de emergencia.',
       commandPreview: command,
       children: [
-        TextField(
-          controller: _controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Tiempo sin movimiento',
-            hintText: 'Ej: 80',
-            suffixText: 'minutos',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (_) => setState(() {}),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Tiempo',
+                  hintText: 'Ej: 80',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _unit,
+                decoration: const InputDecoration(
+                  labelText: 'Unidad',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final entry in _unitLabels.entries)
+                    DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _unit = v ?? 'M'),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         SwitchListTile(
@@ -68,7 +101,7 @@ class _NoMovementSheetState extends State<NoMovementSheet> {
           successMessage: 'Alerta de no movimiento configurada.',
         );
       },
-      secondaryLabel: 'Desactivar alerta (NMOO)',
+      secondaryLabel: 'Desactivar alerta (NMO0)',
       onSecondary: () async {
         Navigator.pop(context);
         await sendCommandWithFeedback(

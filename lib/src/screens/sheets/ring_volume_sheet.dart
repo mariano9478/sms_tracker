@@ -15,14 +15,15 @@ class RingVolumeSheet extends StatefulWidget {
 }
 
 class _RingVolumeSheetState extends State<RingVolumeSheet> {
-  double _volume = 50;
+  double _volume = 70;
 
   @override
   Widget build(BuildContext context) {
     final command = TrackerCommands.ringVolume(_volume.round());
     return CommandSheetScaffold(
       title: 'Volumen del timbre',
-      description: 'Ajusta el volumen del timbre del rastreador (0 a 100).',
+      description: 'Ajusta el volumen del timbre del rastreador (0 a 100). '
+          'Valor de fábrica: 70.',
       commandPreview: command,
       children: [
         Text('Volumen: ${_volume.round()}'),
